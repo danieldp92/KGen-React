@@ -434,7 +434,7 @@ export default function HomePage() {
             handleAnonymize();
             setPendingAnonymize(false); // reset flag
         }
-    }, [attributeInfo]);
+    }, [attributeInfo, handleAnonymize, pendingAnonymize]);
 
     return (
         <Box sx={{
@@ -524,7 +524,7 @@ export default function HomePage() {
                                         No data loaded
                                     </Typography>
                                     <Typography color="text.secondary">
-                                        Click "Load Database" to begin
+                                        Click &quot;Load Database&quot; to begin
                                     </Typography>
                                 </Box>
                             )}
