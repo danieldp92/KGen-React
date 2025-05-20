@@ -35,10 +35,9 @@ const NAVIGATION: Navigation = [
     icon: <DashboardIcon />,
   },
   {
-    segment: 'employees',
-    title: 'Anonymization Strrategies',
+    segment: '',
+    title: 'Anonymization Strategies',
     icon: <ShieldIcon />,
-    pattern: 'employees{/:employeeId}*',
   },
 ];
 
@@ -50,21 +49,11 @@ const BRANDING = {
 
 function DefaultLayout({ page }: { page: React.ReactElement<any> }) {
   const router = useRouter();
-  const { segments = [] } = router.query;
-  const [employeeId] = segments;
-
   const title = React.useMemo(() => {
-    if (router.asPath.split('?')[0] === '/employees/new') {
-      return 'New Employee';
-    }
-    if (employeeId && router.asPath.includes('/edit')) {
-      return `Employee ${employeeId} - Edit`;
-    }
-    if (employeeId) {
-      return `Employee ${employeeId}`;
-    }
-    return undefined;
-  }, [employeeId, router.asPath]);
+    if (router.pathname === '/') return 'Anonymization Platform';
+    if (router.pathname.includes('anonymization')) return 'Anonymization';
+    return 'KGen';
+  }, [router.pathname]);
 
   return (
     <DashboardLayout>
@@ -78,7 +67,7 @@ function getDefaultLayout(page: React.ReactElement<any>) {
 }
 
 function AppLayout({ children }: { children: React.ReactNode }) {
-  
+
   return (
     <React.Fragment>
       <Head>
@@ -87,7 +76,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
       <NextAppProvider
         navigation={NAVIGATION}
         branding={BRANDING}
-        
+
         theme={theme}
       >
         {children}
@@ -108,9 +97,9 @@ export default function App(props: AppPropsWithLayout) {
 
   return (
     <AppCacheProvider {...props}>
-      
+
         {pageContent}
-      
+
     </AppCacheProvider>
   );
 }

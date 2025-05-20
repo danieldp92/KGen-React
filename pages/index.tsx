@@ -416,9 +416,9 @@ export default function HomePage() {
         }
     }, [attributeInfo, handleAnonymize, pendingAnonymize]);
 
-    const rowsToShow = (showAnonymized && anonymizedData?.length > 0)
+    const rowsToShow = (showAnonymized && (anonymizedData?.length ?? 0) > 0)
         ? anonymizedData
-        : data?.length > 0
+        : (data?.length ?? 0) > 0
             ? data
             : null;
 
