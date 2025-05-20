@@ -59,7 +59,7 @@ export default function HomePage() {
         setLoading(true);
 
         try {
-            const res = await fetch('http://localhost:8080/api/anonymize', {
+            const res = await fetch('https://kgen-api-88292e39742b.herokuapp.com/api/anonymize', {
                 method: 'POST',
                 body: JSON.stringify(payload),
                 headers: { 'Content-Type': 'application/json' }
