@@ -23,6 +23,13 @@ import CloseIcon from '@mui/icons-material/Close';
 import Papa from 'papaparse';
 
 export default function HomePage() {
+    type Metadata = {
+        [key: string]: {
+            identifierType?: string;
+            dataType?: string;
+        };
+    };
+
     // State for filter selections
     const [prevAttribute, setPrevAttribute] = useState('');
     const [attribute, setAttribute] = useState('');
@@ -37,6 +44,7 @@ export default function HomePage() {
 
     const [anonymizedData, setAnonymizedData] = useState(null);
     const [showAnonymized, setShowAnonymized] = useState(false);
+    const [pendingAnonymize, setPendingAnonymize] = useState(false);
 
     // Dialog state
     const [openDialog, setOpenDialog] = useState(false);
@@ -59,8 +67,9 @@ export default function HomePage() {
             const result = await res.json();
             console.log(result["dataset"])
             const parsedData = parseDatasetJson(result["dataset"]);
-            console.log(parsedData)
-            setAnonymizedData(parsedData);
+            const mergedData = mergeSensitiveDataBack(data, parsedData, payload["metadata"]);
+            setAnonymizedData(mergedData);
+            console.log(mergedData)
 
             // setAnonymizedData(result["dataset"])
             // await new Promise(resolve => setTimeout(resolve, 5000)); // 60000 ms = 1 min
@@ -93,6 +102,31 @@ export default function HomePage() {
         }
     };
 
+    const downloadAnonymizedCSV = () => {
+        if (!anonymizedData || anonymizedData.length === 0) {
+            alert("No anonymized data to download.");
+            return;
+        }
+
+        const headers = Object.keys(anonymizedData[0]);
+        const csvRows = [
+            headers.join(','), // header row
+            ...anonymizedData.map(row =>
+                headers.map(header => JSON.stringify(row[header] ?? '')).join(',')
+            )
+        ];
+
+        const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', 'anonymized_dataset.csv');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     // Funzione per verificare se tutti gli attributi sono configurati
     const areAllAttributesConfigured = () => {
         return Object.values(attributeInfo).every((info) => {
@@ -105,28 +139,56 @@ export default function HomePage() {
         });
     };
 
-    const handleAttributeChange = (e) => {
-        const selectedAttribute = e.target.value;
-        console.log('Attribute OnChange');
+    const initMetadata = (data: any[]) => {
+        if (!data || data.length === 0) return;
 
-        console.log('Old Attribute: ', prevAttribute);
-        console.log('New Attribute: ', selectedAttribute);
+        const initialMetadata: Metadata = {};
+        Object.keys(data[0]).forEach((attr) => {
+            initialMetadata[attr] = {};
+        });
 
-        if (prevAttribute !== '')
-            handleSaveAttributeInfo(prevAttribute);
-
-        setAttribute(selectedAttribute);
-        setPrevAttribute(selectedAttribute);
+        setAttributeInfo(initialMetadata);
+        console.log("Initialized metadata:", attributeInfo);
     };
 
-    const handleSaveAttributeInfo = (attributeKey: any) => {
-        setAttributeInfo(prevState => ({
-            ...prevState,
-            [attributeKey]: {
-                identifierType,
-                dataType
+    const updateMetadata = (attr: any, idType: any, dType: any) => {
+        console.log("IdType:", identifierType);
+        console.log("DataType:", dataType);
+        setAttributeInfo(prev => ({
+            ...prev,
+            [attr]: {
+                identifierType: idType,
+                dataType: dType
             }
         }));
+        console.log("Updated metadata:", attributeInfo);
+    };
+
+    const handleAttributeChange = (event: { target: { value: any; }; }) => {
+        if (attribute) {
+            console.log('Old attribute:', attribute);
+            console.log('IdType:', identifierType);
+            console.log('DataType:', dataType);
+            updateMetadata(attribute, identifierType, dataType);
+        }
+
+        const newAttribute = event.target.value;
+        console.log('New attribute:', newAttribute);
+        setAttribute(newAttribute);
+
+        // // Get new attribute's metadata
+        // const newAttributeMetadata = attributeInfo[newAttribute] || {};
+        // console.log('New attribute metadata:', newAttributeMetadata);
+        //
+        //
+        //
+        // if (Object.keys(newAttributeMetadata).length > 0) {
+        //     setIdentifierType(newAttributeMetadata.identifierType || '');
+        //     setDataType(newAttributeMetadata.dataType || '');
+        // } else {
+        //     setIdentifierType('');
+        //     setDataType('');
+        // }
     };
 
     const handleOpenDialog = () => {
@@ -199,11 +261,15 @@ export default function HomePage() {
                 }
 
                 setData(parsed.data);
+                initMetadata(parsed.data);
+                console.log('Data loaded:', parsed.data);
                 handleCloseDialog();
             };
             reader.readAsText(selectedFile);
 
             handleCloseDialog();
+
+
         }
     };
 
@@ -271,6 +337,29 @@ export default function HomePage() {
         openAnonymizationDialog(anonymizationPayload);
     };
 
+    const mergeSensitiveDataBack = (originalData, anonymizedData, metadata) => {
+        if (!originalData || !anonymizedData || !metadata) return anonymizedData;
+
+        // Trova gli attributi "sensitive"
+        const sensitiveFields = metadata
+            .filter(entry => entry.IDType === "s")
+            .map(entry => entry.Name);
+
+        return anonymizedData.map((anonRow, index) => {
+            const originalRow = originalData[index];
+            if (!originalRow) return anonRow;
+
+            // Sostituisce solo i campi sensitive
+            const mergedRow = { ...anonRow };
+            sensitiveFields.forEach(field => {
+                mergedRow[field] = originalRow[field];
+            });
+
+            return mergedRow;
+        });
+    };
+
+
     // Helper interno per convertire i tipi identificatori
     const convertIdentifierType = (type) => {
         switch (type) {
@@ -309,21 +398,43 @@ export default function HomePage() {
     //     }
     // }, [data]);
 
-    useEffect(() => {
-        if (attribute) {
-            // Controlla se ci sono configurazioni salvate per l'attributo
-            if (attributeInfo[attribute]) {
-                setIdentifierType(attributeInfo[attribute].identifierType || '');
-                setDataType(attributeInfo[attribute].dataType || '');
-            } else {
-                // Usa i valori di default se non ci sono configurazioni salvate
-                setIdentifierType('');  // Default per Identifier Type
-                setDataType('');    // Default per Data Type
-            }
+    // useEffect(() => {
+    //     if (attribute) {
+    //         // Controlla se ci sono configurazioni salvate per l'attributo
+    //         if (attributeInfo[attribute] && Object.keys(attributeInfo[attribute]).length > 0) {
+    //             setIdentifierType(attributeInfo[attribute].identifierType || '');
+    //             setDataType(attributeInfo[attribute].dataType || '');
+    //         } else {
+    //             // Usa i valori di default se non ci sono configurazioni salvate
+    //             setIdentifierType('');  // Default per Identifier Type
+    //             setDataType('');    // Default per Data Type
+    //         }
+    //
+    //         console.log('attributeInfo updated:', attributeInfo);
+    //     }
+    // }, [attribute, attributeInfo]);
 
-            console.log('attributeInfo updated:', attributeInfo);
+    useEffect(() => {
+        // Get new attribute's metadata
+        const newAttributeMetadata = attributeInfo[attribute] || {};
+        console.log('New attribute metadata:', newAttributeMetadata);
+
+        if (Object.keys(newAttributeMetadata).length > 0) {
+            setIdentifierType(newAttributeMetadata.identifierType || '');
+            setDataType(newAttributeMetadata.dataType || '');
+        } else {
+            setIdentifierType('');
+            setDataType('');
         }
-    }, [attribute, attributeInfo]);
+        console.log('attributeInfo updated:', attributeInfo);
+    }, [attributeInfo, attribute]);
+
+    useEffect(() => {
+        if (pendingAnonymize) {
+            handleAnonymize();
+            setPendingAnonymize(false); // reset flag
+        }
+    }, [attributeInfo]);
 
     return (
         <Box sx={{
@@ -346,16 +457,26 @@ export default function HomePage() {
                         elevation={2}
                     >
                         {data && anonymizedData && (
-                            <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+                            <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Button
+                                    variant="outlined"
+                                    startIcon={<CloudUploadIcon />}
+                                    onClick={downloadAnonymizedCSV}
+                                    disabled={!anonymizedData || anonymizedData.length === 0}
+                                >
+                                    Download CSV
+                                </Button>
 
-                                <Typography variant="body2" sx={{ mr: 1 }}>
-                                    Show Anonymized
-                                </Typography>
-                                <Switch
-                                    checked={showAnonymized}
-                                    onChange={() => setShowAnonymized(!showAnonymized)}
-                                    color="primary"
-                                />
+                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                    <Typography variant="body2" sx={{ mr: 1 }}>
+                                        Show Anonymized
+                                    </Typography>
+                                    <Switch
+                                        checked={showAnonymized}
+                                        onChange={() => setShowAnonymized(!showAnonymized)}
+                                        color="primary"
+                                    />
+                                </Box>
                             </Box>
                         )}
                         {/* Table placeholder */}
@@ -490,8 +611,9 @@ export default function HomePage() {
                                 fullWidth
                                 startIcon={<ShieldIcon />}
                                 onClick={() => {
-                                    handleSaveAttributeInfo(attribute); // Save the current attribute data
-                                    handleAnonymize(); // Anonymize logic here
+                                    updateMetadata(attribute, identifierType, dataType); // Save the current attribute data
+                                    setPendingAnonymize(true);
+                                    // handleAnonymize(); // Anonymize logic here
                                 }}
                                 disabled={!data || !attribute || !dataType || !identifierType}
                                 sx={{ mt: 2 }}
