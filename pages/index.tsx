@@ -45,7 +45,7 @@ export default function HomePage() {
     const [attributeInfo, setAttributeInfo] = useState<Record<string, AttributeConfig>>({});
 
     // Placeholder for table data
-    const [data, setData] = useState(null);
+    const [data, setData] = useState([]);
     // const [data, setData] = useState<any[]>([]);
 
     const [anonymizedData, setAnonymizedData] = useState<any[] | null>(null);
@@ -418,6 +418,7 @@ export default function HomePage() {
 
     // @ts-ignore
     // @ts-ignore
+    // @ts-ignore
     return (
         <Box sx={{
             width: '100%',
@@ -543,9 +544,9 @@ export default function HomePage() {
                                     value={attribute}
                                     label="Attribute"
                                     onChange={handleAttributeChange}
-                                    disabled={!data || data.length === 0}
+                                    disabled={!Array.isArray(data) || data.length === 0}
                                 >
-                                    {!data ? (
+                                    {(!data || !Array.isArray(data) || data.length === 0) ? (
                                         <MenuItem value="">Attribute</MenuItem>
                                     ) : (
                                         Object.keys(data[0]).map((key) => (
