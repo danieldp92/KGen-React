@@ -37,12 +37,18 @@ export default function HomePage() {
     const [dataType, setDataType] = useState('');
 
     // State of each attribute's configuration data
-    const [attributeInfo, setAttributeInfo] = useState({});
+    interface AttributeConfig {
+        identifierType?: string;
+        dataType?: string;
+    }
+
+    const [attributeInfo, setAttributeInfo] = useState<Record<string, AttributeConfig>>({});
 
     // Placeholder for table data
     const [data, setData] = useState(null);
+    // const [data, setData] = useState<any[]>([]);
 
-    const [anonymizedData, setAnonymizedData] = useState(null);
+    const [anonymizedData, setAnonymizedData] = useState<any[] | null>(null);
     const [showAnonymized, setShowAnonymized] = useState(false);
     const [pendingAnonymize, setPendingAnonymize] = useState(false);
 
@@ -54,7 +60,11 @@ export default function HomePage() {
     const [anonymizationDialogOpen, setAnonymizationDialogOpen] = useState(false);
     const [loading, setLoading] = useState(false);
 
-    const openAnonymizationDialog = async (payload) => {
+    const openAnonymizationDialog = async (payload: {
+            [x: string]: any; dataset?: null; metadata?: {
+                Name: string; IDType: string; DateType: string; PK: boolean; // puoi cambiare se prevedi di supportare PK
+            }[];
+        }) => {
         setAnonymizationDialogOpen(true);
         setLoading(true);
 
@@ -70,12 +80,6 @@ export default function HomePage() {
             const mergedData = mergeSensitiveDataBack(data, parsedData, payload["metadata"]);
             setAnonymizedData(mergedData);
             console.log(mergedData)
-
-            // setAnonymizedData(result["dataset"])
-            // await new Promise(resolve => setTimeout(resolve, 5000)); // 60000 ms = 1 min
-            // const result = { success: true, message: "Fake response after 1 minute" };
-            // console.log('Anonymization result:', result);
-            // Do something with result
         } catch (err) {
             console.error('Anonymization failed:', err);
         } finally {
@@ -84,13 +88,13 @@ export default function HomePage() {
         }
     };
 
-    const parseDatasetJson = (rawJson) => {
+    const parseDatasetJson = (rawJson: string) => {
         try {
             const parsedArray = JSON.parse(rawJson); // trasforma la stringa in array di array
             const headers = parsedArray[0]; // prima riga sono le intestazioni
-            const data = parsedArray.slice(1).map(row => {
-                const obj = {};
-                headers.forEach((key, index) => {
+            const data = parsedArray.slice(1).map((row: { [x: string]: any; }) => {
+                const obj: { [key: string]: any } = {};
+                headers.forEach((key: string | number, index: string | number) => {
                     obj[key] = row[index];
                 });
                 return obj;
@@ -103,7 +107,7 @@ export default function HomePage() {
     };
 
     const downloadAnonymizedCSV = () => {
-        if (!anonymizedData || anonymizedData.length === 0) {
+        if (!anonymizedData?.length) {
             alert("No anonymized data to download.");
             return;
         }
@@ -129,7 +133,7 @@ export default function HomePage() {
 
     // Funzione per verificare se tutti gli attributi sono configurati
     const areAllAttributesConfigured = () => {
-        return Object.values(attributeInfo).every((info) => {
+        return Object.values(attributeInfo).every((info: AttributeConfig) => {
             if (info.identifierType === "quasi-identifier") {
                 // Se l'identifierType è "quasi-identifier", deve esserci anche un dataType
                 return info.identifierType && info.dataType;
@@ -175,20 +179,6 @@ export default function HomePage() {
         const newAttribute = event.target.value;
         console.log('New attribute:', newAttribute);
         setAttribute(newAttribute);
-
-        // // Get new attribute's metadata
-        // const newAttributeMetadata = attributeInfo[newAttribute] || {};
-        // console.log('New attribute metadata:', newAttributeMetadata);
-        //
-        //
-        //
-        // if (Object.keys(newAttributeMetadata).length > 0) {
-        //     setIdentifierType(newAttributeMetadata.identifierType || '');
-        //     setDataType(newAttributeMetadata.dataType || '');
-        // } else {
-        //     setIdentifierType('');
-        //     setDataType('');
-        // }
     };
 
     const handleOpenDialog = () => {
@@ -201,24 +191,24 @@ export default function HomePage() {
         setSelectedFile(null);
     };
 
-    const handleDragEnter = (e) => {
+    const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
         e.stopPropagation();
         setDragActive(true);
     };
 
-    const handleDragLeave = (e) => {
+    const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
         e.stopPropagation();
         setDragActive(false);
     };
 
-    const handleDragOver = (e) => {
+    const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
         e.stopPropagation();
     };
 
-    const handleDrop = (e) => {
+    const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
         e.stopPropagation();
         setDragActive(false);
@@ -226,6 +216,7 @@ export default function HomePage() {
         if (e.dataTransfer.files && e.dataTransfer.files[0]) {
             const file = e.dataTransfer.files[0];
             if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
+                // @ts-ignore
                 setSelectedFile(file);
             } else {
                 alert('Please upload a CSV file');
@@ -233,35 +224,46 @@ export default function HomePage() {
         }
     };
 
-    const handleFileInput = (e) => {
-        const file = e.target.files[0];
-        if (file && (file.type === 'text/csv' || file.name.endsWith('.csv'))) {
-            setSelectedFile(file);
-        } else if (file) {
-            alert('Please upload a CSV file');
+    const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files.length > 0) {
+            const file = e.target.files[0];
+            if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
+                // @ts-ignore
+                setSelectedFile(file);
+            } else {
+                alert('Please upload a CSV file');
+            }
         }
     };
 
     const handleLoadDatabase = () => {
         if (selectedFile) {
             // In a real application, this would parse the CSV
+            // @ts-ignore
             console.log('Loading database from file:', selectedFile.name);
             // setData([{ id: 1, placeholder: `Data loaded from ${selectedFile.name}` }]);
             const reader = new FileReader();
             reader.onload = function (e) {
+                // @ts-ignore
                 const csv = e.target.result;
+                // @ts-ignore
                 const parsed = Papa.parse(csv, {
                     header: true,
                     skipEmptyLines: true
                 });
 
+                // @ts-ignore
                 if (parsed.errors.length) {
+                    // @ts-ignore
                     alert('Error parsing CSV: ' + parsed.errors[0].message);
                     return;
                 }
 
+                // @ts-ignore
                 setData(parsed.data);
+                // @ts-ignore
                 initMetadata(parsed.data);
+                // @ts-ignore
                 console.log('Data loaded:', parsed.data);
                 handleCloseDialog();
             };
@@ -274,17 +276,17 @@ export default function HomePage() {
     };
 
     // Function to convert the JSON into an array of objects
-    const handleLoadAnonymizedData = (json) => {
+    const handleLoadAnonymizedData = (json: string) => {
         try {
             const parsed = JSON.parse(json);
             const dataArray = JSON.parse(parsed.dataset); // convert dataset string to array
             const headers = dataArray[0];
             const rows = dataArray.slice(1);
 
-            const result = rows.map(row => {
-                let obj = {};
-                headers.forEach((header, index) => {
-                    obj[header] = row[index];
+            const result = rows.map((row: { [x: string]: any; }) => {
+                let obj: { [key: string]: any } = {};
+                headers.forEach((header: string | number, index: string | number) => {
+                    obj[header as string] = row[index];
                 });
                 return obj;
             });
@@ -334,10 +336,11 @@ export default function HomePage() {
         // openAnonymizationDialog(anonymizationPayload);
 
         // Aggiungi qui apertura dialog con loader e invio a endpoint
+        // @ts-ignore
         openAnonymizationDialog(anonymizationPayload);
     };
 
-    const mergeSensitiveDataBack = (originalData, anonymizedData, metadata) => {
+    const mergeSensitiveDataBack = (originalData: { [x: string]: any; } | null, anonymizedData: any[], metadata: any[] | undefined) => {
         if (!originalData || !anonymizedData || !metadata) return anonymizedData;
 
         // Trova gli attributi "sensitive"
@@ -361,7 +364,7 @@ export default function HomePage() {
 
 
     // Helper interno per convertire i tipi identificatori
-    const convertIdentifierType = (type) => {
+    const convertIdentifierType = (type: string | undefined) => {
         switch (type) {
             case "identifier":
                 return "i";
@@ -374,7 +377,7 @@ export default function HomePage() {
         }
     };
 
-    const convertDataType = (datatype) => {
+    const convertDataType = (datatype: string | undefined) => {
         switch (datatype) {
             case "text":
                 return "string";
@@ -390,29 +393,6 @@ export default function HomePage() {
                 return "string";
         }
     };
-
-
-    // useEffect(() => {
-    //     if (data && data.length > 0) {
-    //         setAttribute(Object.keys(data[0])[0] || '');
-    //     }
-    // }, [data]);
-
-    // useEffect(() => {
-    //     if (attribute) {
-    //         // Controlla se ci sono configurazioni salvate per l'attributo
-    //         if (attributeInfo[attribute] && Object.keys(attributeInfo[attribute]).length > 0) {
-    //             setIdentifierType(attributeInfo[attribute].identifierType || '');
-    //             setDataType(attributeInfo[attribute].dataType || '');
-    //         } else {
-    //             // Usa i valori di default se non ci sono configurazioni salvate
-    //             setIdentifierType('');  // Default per Identifier Type
-    //             setDataType('');    // Default per Data Type
-    //         }
-    //
-    //         console.log('attributeInfo updated:', attributeInfo);
-    //     }
-    // }, [attribute, attributeInfo]);
 
     useEffect(() => {
         // Get new attribute's metadata
@@ -436,6 +416,8 @@ export default function HomePage() {
         }
     }, [attributeInfo, handleAnonymize, pendingAnonymize]);
 
+    // @ts-ignore
+    // @ts-ignore
     return (
         <Box sx={{
             width: '100%',
@@ -497,7 +479,7 @@ export default function HomePage() {
                                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                         <thead>
                                         <tr>
-                                            {Object.keys(showAnonymized && anonymizedData ? anonymizedData[0] : data[0]).map((key) => (
+                                            {(showAnonymized && anonymizedData?.[0] ? Object.keys(anonymizedData[0]) : data?.[0] ? Object.keys(data[0]) : []).map((key) => (
                                                 <th key={key} style={{ border: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>
                                                     {key}
                                                 </th>
@@ -505,11 +487,11 @@ export default function HomePage() {
                                         </tr>
                                         </thead>
                                         <tbody>
-                                        {(showAnonymized && anonymizedData ? anonymizedData : data).map((row, index) => (
+                                        {((showAnonymized && anonymizedData ? anonymizedData : data) || []).map((row, index) => (
                                             <tr key={index}>
                                                 {Object.values(row).map((value, i) => (
                                                     <td key={i} style={{ border: '1px solid #eee', padding: '8px' }}>
-                                                        {value}
+                                                        {String(value)}
                                                     </td>
                                                 ))}
                                             </tr>
@@ -680,13 +662,13 @@ export default function HomePage() {
                         onDragLeave={handleDragLeave}
                         onDragOver={handleDragOver}
                         onDrop={handleDrop}
-                        onClick={() => document.getElementById('fileInput').click()}
+                        onClick={() => document.getElementById('fileInput')?.click()}
                     >
                         <input
                             id="fileInput"
                             type="file"
                             accept=".csv"
-                            onChange={handleFileInput}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleFileInput(e)}
                             style={{ display: 'none' }}
                         />
 
@@ -694,7 +676,7 @@ export default function HomePage() {
 
                         {selectedFile ? (
                             <Typography variant="body1" color="primary">
-                                Selected file: {selectedFile.name}
+                                Selected file: {(selectedFile as File).name}
                             </Typography>
                         ) : (
                             <>

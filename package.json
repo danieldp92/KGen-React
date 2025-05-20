@@ -9,11 +9,12 @@
   },
   "dependencies": {
     "@emotion/cache": "^11",
-    "@emotion/react": "^11",
+    "@emotion/react": "^11.14.0",
     "@emotion/server": "^11",
+    "@emotion/style": "^0.8.0",
     "@emotion/styled": "^11",
     "@mui/icons-material": "^7",
-    "@mui/material": "^7",
+    "@mui/material": "^7.1.0",
     "@mui/material-nextjs": "^7",
     "@toolpad/core": "0.15.0",
     "next": "^15",
@@ -25,7 +26,7 @@
   "devDependencies": {
     "@types/node": "^20",
     "@types/papaparse": "^5.3.16",
-    "@types/react": "^18",
+    "@types/react": "^18.3.21",
     "@types/react-dom": "^18",
     "eslint": "^8",
     "eslint-config-next": "^15",
