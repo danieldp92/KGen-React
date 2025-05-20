@@ -416,6 +416,12 @@ export default function HomePage() {
         }
     }, [attributeInfo, handleAnonymize, pendingAnonymize]);
 
+    const rowsToShow = (showAnonymized && anonymizedData?.length > 0)
+        ? anonymizedData
+        : data?.length > 0
+            ? data
+            : null;
+
     // @ts-ignore
     // @ts-ignore
     // @ts-ignore
@@ -475,7 +481,7 @@ export default function HomePage() {
                             p: 3
                         }}>
 
-                            {(showAnonymized && anonymizedData ? anonymizedData : data) ? (
+                            {rowsToShow ? (
                                 <Box sx={{ overflow: 'auto', maxHeight: 400, width: '100%' }}>
                                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                         <thead>
